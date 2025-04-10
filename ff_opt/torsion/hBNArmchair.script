@@ -1,0 +1,220 @@
+#!/bin/bash
+#SBATCH --job-name=hBN.Stretch
+#SBATCH --partition=batch
+#SBATCH --ntasks-per-node=20
+#SBATCH --nodes=1
+#SBATCH --time=2-00:00:00 
+
+module load gcc/10.2.0 mvapich2/2.3.4
+module load quantum-espresso/6.7.0
+
+export MV2_USE_RDMA_CM=0
+
+export ESPRESSO_PSEUDO=$PWD
+export ESPRESSO_TMPDIR=$PWD
+
+EXAMPLE_DIR="/mnt/scratch_b/users/m/marapcha/hBN.Torsion/Armchair/"
+
+cd $EXAMPLE_DIR
+
+# check whether echo has the -e option
+if test "`echo -e`" = "-e" ; then ECHO=echo ; else ECHO="echo -e" ; fi
+
+
+# set the needed environment variables
+#PARA_PREFIX="mpirun -np 4 "
+TMP_DIR="/mnt/scratch_b/users/m/marapcha/hBN.Torsion/Armchair/TMP_DIR"
+
+# required executables and pseudopotentials
+PSEUDO_LIST="B.pbe-n-kjpaw_psl.1.0.0.UPF N.pbe-n-kjpaw_psl.1.0.0.UPF"
+PSEUDO_DIR="/mnt/scratch_b/users/m/marapcha/hBN.Torsion/Armchair/PSEUDO_DIR/"
+
+$ECHO
+
+$ECHO "  pseudo directory:      $PSEUDO_DIR"
+$ECHO "  temporary directory:   $TMP_DIR"
+$ECHO "  checking that needed directories and files exist...\c"
+
+# check for directories
+for DIR in "$PSEUDO_DIR" ; do
+    if test ! -d $DIR ; then
+        $ECHO
+        $ECHO "ERROR: $DIR not existent or not a directory"
+        $ECHO "Aborting"
+        exit 1
+    fi
+done
+for DIR in "$TMP_DIR" "$EXAMPLE_DIR/results_arm" ; do
+    if test ! -d $DIR ; then
+        mkdir $DIR
+    fi
+done
+
+cd $EXAMPLE_DIR/results_arm
+
+# check for pseudopotentials
+for FILE in $PSEUDO_LIST ; do
+    if test ! -r $PSEUDO_DIR/$FILE ; then
+        $ECHO
+        $ECHO "ERROR: $PSEUDO_DIR/$FILE not existent or not readable"
+        $ECHO "Aborting"
+        exit 1
+    fi
+done
+$ECHO " done"
+
+# how to run executables
+#PW_COMMAND="$PARA_PREFIX pw.x "
+
+for angle in `seq 0 1 10; seq 12 2 90`; do
+
+# clean TMP_DIR
+    $ECHO "  cleaning $TMP_DIR...\c"
+    rm -rf $TMP_DIR/*
+    $ECHO " done"
+
+
+d=2.7434 #a.u.
+sp=$(echo "scale=10; $d*8.0"| bc -l)
+
+u=$(echo "scale=10; $d*sqrt(3.0)/2.0"| bc -l)
+xi=$(echo "scale=10; $d/2.0"| bc -l)
+
+
+x1=$(echo "scale=10; -3.0*$u"| bc -l); y1=0.00000000
+x2=$(echo "scale=10; -2.0*$u"| bc -l); y2=$xi
+x3=$(echo "scale=10; -1.0*$u"| bc -l); y3=0.00000000
+x4=0.000000; y4=$xi
+x5=$u ; y5=0.00000000
+x6=$(echo "scale=10; 2.0*$u"| bc -l); y6=$xi
+x7=$(echo "scale=10; 3.0*$u"| bc -l); y7=0.00000000
+x8=$x1; y8=$(echo "scale=10; 4.0*$xi"| bc -l);
+x9=$x2; y9=$(echo "scale=10; 3.0*$xi"| bc -l);
+x10=$x3; y10=$y8
+x11=$x4; y11=$y9
+x12=$x5; y12=$y8
+x13=$x6; y13=$y11
+x14=$x7; y14=$y12
+x15=$(echo "scale=10; -4.0*$u"| bc -l); y15=$xi
+x16=$x15; y16=$y13
+x17=$(echo "scale=10; 4.0*$u"| bc -l); y17=$xi
+x18=$(echo "scale=10; 4.0*$u"| bc -l); y18=$y13
+x19=$(echo "scale=10; -5.0*$u"| bc -l); y19=0.0000000
+x20=$x19; y20=$y8
+x21=$(echo "scale=10; 5.0*$u"| bc -l); y21=0.0000000
+x22=$(echo "scale=10; 5.0*$u"| bc -l); y22=$y14
+
+o=$(echo "scale=10; 4.0*$angle*a(1.0)/180.0"| bc -l)
+co=$(echo "scale=10; c($o)"| bc -l)
+so=$(echo "scale=10; s($o)"| bc -l)
+
+#rotation due to dihedral bending
+z5=$(echo "scale=10; $x5*$so"| bc -l)
+x5=$(echo "scale=10; $x5*$co"| bc -l)
+
+z6=$(echo "scale=10; $x6*$so"| bc -l)
+x6=$(echo "scale=10; $x6*$co"| bc -l)
+
+z7=$(echo "scale=10; $x7*$so"| bc -l)
+x7=$(echo "scale=10; $x7*$co"| bc -l)
+
+z12=$(echo "scale=10; $x12*$so"| bc -l)
+x12=$(echo "scale=10; $x12*$co"| bc -l)
+
+z13=$(echo "scale=10; $x13*$so"| bc -l)
+x13=$(echo "scale=10; $x13*$co"| bc -l)
+
+z14=$(echo "scale=10; $x14*$so"| bc -l)
+x14=$(echo "scale=10; $x14*$co"| bc -l)
+
+z17=$(echo "scale=10; $x17*$so"| bc -l)
+x17=$(echo "scale=10; $x17*$co"| bc -l)
+
+z18=$(echo "scale=10; $x18*$so"| bc -l)
+x18=$(echo "scale=10; $x18*$co"| bc -l)
+
+z21=$(echo "scale=10; $x21*$so"| bc -l)
+x21=$(echo "scale=10; $x21*$co"| bc -l)
+
+xx=$x22
+z22=$(echo "scale=10; $x22*$so"| bc -l)
+x22=$(echo "scale=10; $x22*$co"| bc -l)
+shift_a=$(echo "scale=10; $xx-$x22"| bc -l)
+
+a=$(echo "scale=10; ($u*10.0)+$sp-$shift_a"| bc -l)
+b=$(echo "scale=10; $xi*6.0"| bc -l)
+c=$(echo "scale=10; $sp+$z22"| bc -l)
+
+bova=$(echo "scale=10; $b/$a"| bc -l)
+cova=$(echo "scale=10; $c/$a"| bc -l)
+
+    cat > BN_dih_${angle}.in << EOF
+ &CONTROL
+                 calculation = 'scf' ,
+                restart_mode = 'from_scratch' ,
+                  wf_collect = .true. ,
+                      outdir = '$TMP_DIR' ,
+                  pseudo_dir = '$PSEUDO_DIR' ,
+               etot_conv_thr = 1.0D-4 ,
+               forc_conv_thr = 1.0D-3 ,
+                      prefix = 'BN_arm'
+ /
+ &SYSTEM
+                       ibrav = 0,
+                   celldm(1) = $a
+                         nat = 22,
+                        ntyp = 2,
+                     ecutwfc = 60.0 ,
+                     ecutrho = 480.0 ,
+                        nbnd = 48,
+                 occupations = 'smearing' ,
+                     degauss = 0.005 ,
+ /
+ &ELECTRONS
+            electron_maxstep = 100,
+                    conv_thr = 1.0d-6 ,
+                 mixing_mode = 'plain' ,
+                 mixing_beta = 0.7 ,
+             diagonalization = 'david' ,
+ /
+CELL_PARAMETERS alat 
+     1.000000000    0.000000000    0.000000000 
+     0.000000000    $bova    0.000000000 
+     0.000000000    0.000000000    $cova
+ATOMIC_SPECIES
+ B   10.810 B.pbe-n-kjpaw_psl.1.0.0.UPF
+ N   14.01  N.pbe-n-kjpaw_psl.1.0.0.UPF
+ATOMIC_POSITIONS bohr 
+B  $x1   $y1    0.000000000
+N  $x2   $y2    0.000000000
+B  $x3   $y3    0.000000000
+N  $x4   $y4    0.000000000
+B  $x5   $y5    $z5
+N  $x6   $y6    $z6
+B  $x7   $y7    $z7
+N  $x8   $y8    0.000000000
+B  $x9   $y9    0.000000000
+N  $x10  $y10    0.000000000
+B  $x11  $y11    0.000000000
+N  $x12  $y12   $z12
+B  $x13  $y13   $z13
+N  $x14  $y14   $z14
+N  $x15  $y15    0.000000000
+B  $x16  $y16    0.000000000
+N  $x17  $y17   $z17
+B  $x18  $y18   $z18
+B  $x19  $y19    0.000000000
+N  $x20  $y20    0.000000000
+B  $x21  $y21   $z21
+N  $x22  $y22   $z22
+K_POINTS automatic
+1 24 1 0 0 0
+EOF
+   srun pw.x < BN_dih_${angle}.in > BN_dih_${angle}.out
+
+    E=`grep '!    total energy ' grap_dih_${angle}.out | tail -n 1 | cut -d"=" -f2`
+    echo $angle $E >> E_vs_dihedral_arm.dat
+    
+done
+
+

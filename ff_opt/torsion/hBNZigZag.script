@@ -1,0 +1,171 @@
+#!/bin/bash
+#SBATCH --job-name=hBN.Torszig
+#SBATCH --partition=batch
+#SBATCH --ntasks-per-node=20
+#SBATCH --nodes=1
+#SBATCH --time=05:00:00 
+
+module load gcc/10.2.0 mvapich2/2.3.4
+module load quantum-espresso/6.7.0
+
+export MV2_USE_RDMA_CM=0
+
+export ESPRESSO_PSEUDO=$PWD
+export ESPRESSO_TMPDIR=$PWD
+
+# run from directory where this script is
+EXAMPLE_DIR="/mnt/scratch_b/users/m/marapcha/hBN.Torsion/Zig_zag/"
+
+# check whether echo has the -e option
+if test "`echo -e`" = "-e" ; then ECHO=echo ; else ECHO="echo -e" ; fi
+
+#PARA_PREFIX="mpirun -np 8 "
+
+TMP_DIR="/mnt/scratch_b/users/m/marapcha/hBN.Torsion/Zig_zag/TMP_DIR"
+PSEUDO_LIST="B.pbe-n-kjpaw_psl.1.0.0.UPF N.pbe-n-kjpaw_psl.1.0.0.UPF"
+PSEUDO_DIR="/mnt/scratch_b/users/m/marapcha/hBN.Torsion/Zig_zag/PSEUDO_DIR/"
+
+if [ ! -d "$EXAMPLE_DIR/results_zig" ]; then
+   mkdir $EXAMPLE_DIR/results_zig
+fi
+cd $EXAMPLE_DIR/results_zig
+
+for angle in `seq 0 1 10; seq 12 2 90`; do
+
+# clean TMP_DIR
+    $ECHO "  cleaning $TMP_DIR...\c"
+    rm -rf $TMP_DIR/*
+    $ECHO " done"
+
+
+d=2.7434 #a.u.
+sp=$(echo "scale=10; $d*8.0"| bc -l)
+
+u=$(echo "scale=10; $d*sqrt(3.0)/2.0"| bc -l)
+xi=$(echo "scale=10; $d/2.0"| bc -l)
+
+x1=$(echo "scale=10; -6.0*$xi"| bc -l); y1=0.00000000
+x2=$(echo "scale=10; -5.0*$xi"| bc -l); y2=$u
+x3=$(echo "scale=10; -3.0*$xi"| bc -l); y3=$u
+x4=$(echo "scale=10; -2.0*$xi"| bc -l); y4=0.00000000
+x5=0.00000000 ; y5=0.00000000
+x6=$xi; y6=$u
+x7=$(echo "scale=10; 3.0*$xi"| bc -l); y7=$u
+x8=$(echo "scale=10; 4.0*$xi"| bc -l); y8=0.00000000
+x9=$(echo "scale=10; 6.0*$xi"| bc -l); y9=0.00000000
+x10=$(echo "scale=10; 7.0*$xi"| bc -l); y10=$u
+x11=$(echo "scale=10; -8.0*$xi"| bc -l); y11=0.00000000
+x12=$(echo "scale=10; -9.0*$xi"| bc -l); y12=$u
+x13=$(echo "scale=10; 9.0*$xi"| bc -l); y13=$u
+x14=$(echo "scale=10; 10.0*$xi"| bc -l); y14=0.00000000
+x15=$(echo "scale=10; -11.0*$xi"| bc -l); y15=$u
+x16=$(echo "scale=10; -12.0*$xi"| bc -l); y16=0.00000000
+x17=$(echo "scale=10; 12.0*$xi"| bc -l); y17=0.00000000
+x18=$(echo "scale=10; 13.0*$xi"| bc -l); y18=$u
+
+
+o=$(echo "scale=10; 4.0*${angle}*a(1.0)/180.0"| bc -l)
+co=$(echo "scale=10; c($o)"| bc -l)
+so=$(echo "scale=10; s($o)"| bc -l)
+
+z6=$(echo "scale=10; $x6*$so"| bc -l)
+x6=$(echo "scale=10; $x6*$co"| bc -l)
+
+z7=$(echo "scale=10; $x7*$so"| bc -l)
+x7=$(echo "scale=10; $x7*$co"| bc -l)
+
+z8=$(echo "scale=10; $x8*$so"| bc -l)
+x8=$(echo "scale=10; $x8*$co"| bc -l)
+
+z9=$(echo "scale=10; $x9*$so"| bc -l)
+x9=$(echo "scale=10; $x9*$co"| bc -l)
+
+z10=$(echo "scale=10; $x10*$so"| bc -l)
+x10=$(echo "scale=10; $x10*$co"| bc -l)
+
+z13=$(echo "scale=10; $x13*$so"| bc -l)
+x13=$(echo "scale=10; $x13*$co"| bc -l)
+
+z14=$(echo "scale=10; $x14*$so"| bc -l)
+x14=$(echo "scale=10; $x14*$co"| bc -l)
+
+z17=$(echo "scale=10; $x17*$so"| bc -l)
+x17=$(echo "scale=10; $x17*$co"| bc -l)
+
+xx=$x18
+z18=$(echo "scale=10; $x18*$so"| bc -l)
+x18=$(echo "scale=10; $x18*$co"| bc -l)
+shift_a=$(echo "scale=10; $xx-$x18"| bc -l)
+
+a=$(echo "scale=10; (24.0*$xi)+$sp-$shift_a"| bc -l)
+b=$(echo "scale=10; $u*2.0"| bc -l)
+c=$(echo "scale=10; $sp+$z18"| bc -l)
+
+bova=$(echo "scale=10; $b/$a"| bc -l)
+cova=$(echo "scale=10; $c/$a"| bc -l)
+
+    cat > BN_dih_${angle}.in << EOF
+ &CONTROL
+                 calculation = 'scf' ,
+                restart_mode = 'from_scratch' ,
+                  wf_collect = .true. ,
+                      outdir = '$TMP_DIR' ,
+                  pseudo_dir = '$PSEUDO_DIR' ,
+               etot_conv_thr = 1.0D-4 ,
+               forc_conv_thr = 1.0D-3 ,
+                      prefix = 'BN_zig' ,
+ /
+ &SYSTEM
+                       ibrav = 0,
+                   celldm(1) = $a
+                         nat = 18,
+                        ntyp = 2,
+                     ecutwfc = 60.0 ,
+                     ecutrho = 480.0 ,
+                        nbnd = 40,
+                 occupations = 'smearing' ,
+                     degauss = 0.005 ,
+ /
+ &ELECTRONS
+            electron_maxstep = 100,
+                    conv_thr = 1.0d-6 ,
+                 mixing_mode = 'plain' ,
+                 mixing_beta = 0.7 ,
+             diagonalization = 'david' ,
+ /
+CELL_PARAMETERS alat 
+     1.000000000    0.000000000    0.000000000 
+     0.000000000    $bova    0.000000000 
+     0.000000000    0.000000000    $cova
+ATOMIC_SPECIES
+ B   10.810 B.pbe-n-kjpaw_psl.1.0.0.UPF
+ N   14.01  N.pbe-n-kjpaw_psl.1.0.0.UPF
+ATOMIC_POSITIONS bohr 
+B  $x1   $y1    0.000000000
+N  $x2   $y2    0.000000000
+B  $x3   $y3    0.000000000
+N  $x4   $y4    0.000000000
+B  $x5   $y5    0.000000000
+N  $x6   $y6   $z6
+B  $x7   $y7   $z7
+N  $x8   $y8   $z8
+B  $x9   $y9   $z9
+N  $x10  $y10  $z10
+N  $x11  $y11   0.000000000
+B  $x12  $y12   0.000000000
+B  $x13  $y13  $z13
+N  $x14  $y14  $z14
+N  $x15  $y15   0.000000000
+B  $x16  $y16   0.000000000
+B  $x17  $y17  $z17
+N  $x18  $y18  $z18
+K_POINTS automatic
+1 24 1 0 0 0
+EOF
+
+   srun pw.x < BN_dih_${angle}.in > BN_dih_${angle}.out
+
+    E=`grep '!    total energy ' BN_dih_${angle}.out | tail -n 1 | cut -d"=" -f2`
+    echo $angle $E >> E_vs_dihedral_zig.dat
+    
+done
