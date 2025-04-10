@@ -1,0 +1,38 @@
+&control
+    calculation = 'scf',
+    restart_mode='from_scratch',
+    prefix='BN',
+    tstress = .true.,
+    tprnfor = .true.,
+
+/
+&system
+    ibrav=  0, 
+    celldm(1) =4.7519, !a.u.
+    nat=2, ntyp=2,
+    ecutwfc =60.0, ecutrho=480.0,
+    occupations='smearing',
+    degauss=0.001
+/
+&electrons
+    diagonalization='david',
+    electron_maxstep = 100,
+    mixing_mode = 'plain',
+    mixing_beta = 0.7,
+    conv_thr =  1.0d-8
+/
+&ions
+/
+
+ATOMIC_SPECIES
+ B   10.810 B.pbe-n-kjpaw_psl.1.0.0.UPF
+ N   14.01  N.pbe-n-kjpaw_psl.1.0.0.UPF
+CELL_PARAMETERS {alat}
+   0.69594162    0.000000000   0.000000000
+   0.34797081    1.037266570   0.000000000
+   0.000000000   0.000000000   8.000000000
+ATOMIC_POSITIONS {alat}
+B        0.000000000   0.000000000   0.000000000
+N        0.3479708  0.46026657   0.000000000
+K_POINTS automatic
+8 8 1 0 0 0
