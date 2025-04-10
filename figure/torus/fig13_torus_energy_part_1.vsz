@@ -1,0 +1,202 @@
+import math as m
+import numpy as np
+import csv
+
+
+lbond = 1.4518 # [Angstrom]
+alat = np.sqrt(3.0)*lbond
+S0   = 3.0*lbond*np.sqrt(3)*lbond/4.0
+
+
+#
+# Parameters section
+#
+path_csv     = 'o.torus_proc.csv'
+
+nx_range = {"x":[6,    8,    9,  11,   13], \
+            "y":[4,    5,    6,   7,   8]}
+
+shapes  = ['circle', 'square', 'triangle', 'star', 'cross', 'diamond']
+colors  = ['theme1', 'theme2', 'theme3', 'theme4', 'theme5', 'theme6']
+labels  = {"x_peatom":"a", "y_peatom":"b"}
+
+#
+# Internal section
+#
+
+class points():
+  def __init__(self, nametag):
+    self.x = []
+    self.y = []
+    self.nametag = nametag
+  
+def gen_point(points, color, shape, nametag, keystr):
+   Add('xy', name=u''+nametag, autoadd=False)
+   To(u''+nametag)
+   Set('marker', u''+shape)
+   Set('markerSize', u'1.5pt')
+   #Set('MarkerFill/transparency', 0)
+   Set('MarkerLine/color', u'black') 
+   Set('MarkerLine/width', u'0.5pt')
+   #Set('PlotLine/hide', False)
+   Set('PlotLine/bezierJoin', True)
+   Set('PlotLine/interpType', 'linear')
+   Set('PlotLine/width', u'1.4pt')
+   Set('color', u''+color)
+   SetData(nametag+"x", points.x, negerr=None, poserr=None)
+   SetData(nametag+"y", points.y, negerr=None, poserr=None)
+   Set('xData', u''+nametag+'x')
+   Set('yData', u''+nametag+'y')
+   Set('key', u''+keystr)
+   To('..')
+
+ImportFileCSV(u''+path_csv, linked=True)
+
+Set('colorTheme', u'default-latest')
+Set('StyleSheet/axis-function/autoRange', u'next-tick')
+
+Add('page', name=u'page1', autoadd=False)
+To(u'page1')
+Set('width', u'8.25cm')
+Set('height', u'9.0cm')
+Add('grid', name=u'grid1', autoadd=False)
+To(u'grid1')
+Set('rows', 2)
+Set('columns', 1)
+Set('leftMargin', '1.7cm')
+Set('rightMargin', '0.2cm')
+Set('topMargin', '0.2cm')
+Set('bottomMargin', '1.3cm')
+
+# Create the graphs
+for case in ['peatom']:
+  for axis in ['x','y']:
+
+    graph_name = axis+'_'+case
+    Add('graph', name=u''+graph_name, autoadd=False)
+    To(u''+graph_name)
+
+    if axis == 'x':
+       chirality = 'ZZ'
+    else:
+       chirality = 'AC'
+    Add('label', name='chirality', autoadd=False)
+    To('chirality')
+    Set('label', chirality)
+    Set('xPos', [0.854])
+    Set('yPos', [0.84])
+    Set('Text/size', '12pt')
+    To('..')
+
+    Add('key', name='key1', autoadd=False)
+    To('key1')
+    Set('title', '\\textit{R}_{NT}/\\AA')
+    Set('Text/size', '11pt')
+    Set('Background/hide', False)
+    Set('Background/transparency', 15)
+    Set('Border/width', '0.5pt')
+    Set('Border/hide', False)
+    Set('horzPosn', 'manual')
+    Set('vertPosn', 'manual')
+    Set('keyLength', '0.5cm')
+    Set('keyAlign', 'bottom')
+    Set('horzManual', 0.0)
+    Set('vertManual', 0.279)
+    Set('marginSize', 0.2)
+    To('..')
+
+    Add('label', name='label2', autoadd=False)
+    To('label2')
+    Set('label', '('+labels[graph_name]+')')
+    Set('xPos', [-0.23])
+    Set('yPos', [0.97])
+    Set('Text/size', '11pt')
+    Set('Text/bold', True)
+    To('..')
+
+    Add('axis', name=u'x', autoadd=False)
+    Set('topMargin', u'0.0cm')
+    Set('bottomMargin', u'0.0cm')
+    Set('rightMargin', u'0.0cm')
+    Set('leftMargin', u'0.0cm')
+
+    To(u'x')
+    Set('label', '{\\textit{R}_{tor}} [\\AA]')
+    Set('min', 3)
+    Set('max', 1600)
+    Set('log', True)
+    Set('TickLabels/format', u'%Ve')
+    Set('GridLines/hide', True)
+    Set('MinorGridLines/hide', True)
+    Set('MajorTicks/number', 5)
+    Set('Label/size', '12pt')
+    Set('TickLabels/size', '12pt')
+    To('..')
+
+    Add('axis', name=u'y', autoadd=False)
+    To(u'y')
+    Set('label', '\\textit{E}_{tor,at}-\\textit{E}_{NT,at} [eV]')
+    Set('direction', u'vertical')
+    Set('Label/size', u'11pt')
+    Set('min', 1e-5)
+    Set('max', 0.7)
+    Set('log', True)
+    Set('TickLabels/format', '%Ve')
+    Set('GridLines/hide', True)
+    Set('MinorGridLines/hide', True)
+    Set('MajorTicks/number', 5)
+    Set('Label/size', '12pt')
+    Set('TickLabels/size', '12pt')
+    To('..')
+    To('..')
+
+all_points = {}
+
+# Read the data
+ndata = len(GetData('nx')[0])
+for nn in range(ndata):
+
+  code = GetData('code')[nn]
+  axis = code.split('_')[0]
+  nx = int(GetData('nx')[0][nn])
+  if not nx in nx_range[axis]: continue
+
+  ny = int(GetData('ny')[0][nn])
+  rext = GetData('radius_ext')[0][nn]
+  rint = GetData('radius_int')[0][nn]
+  peatom = GetData('pe_atom_ref')[0][nn]
+  lx = GetData('lx')[0][nn]
+  pe_atom = GetData('pe_atom')[0][nn]
+  pe_atom_ref = GetData('pe_atom_ref')[0][nn]
+  print(code, nx, ny)
+
+  rint_theory = lx/2.0/np.pi
+
+  index = nx_range[axis].index(nx)
+  shape = shapes[index]
+  color = colors[index]
+
+  markerSize = "1.3pt"
+  markerLineColor = color
+  trasp = 100
+
+  bm_torus = 2.0*rext**2*pe_atom_ref/S0
+  bm_torus_norm = bm_torus / (np.pi*rint**2)
+
+  keytag = str(round(rint,1))
+
+  case = 'peatom'
+  graph_name = axis+'_'+case
+  To(u''+graph_name)
+  xx = rext
+  yy = peatom
+  nametag = graph_name+"_"+str(nx)
+  if not nametag in all_points:
+    all_points[nametag] = points(nametag)
+  all_points[nametag].x.append(xx)
+  all_points[nametag].y.append(yy)
+  gen_point(all_points[nametag], color, shape, nametag, keytag )
+  To('..') # graph
+
+To('..') # grid
+To('..') # page
