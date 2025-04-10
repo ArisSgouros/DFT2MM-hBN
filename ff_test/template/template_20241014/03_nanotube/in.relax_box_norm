@@ -1,0 +1,32 @@
+# setup the system
+dimension 3
+units metal
+boundary p p p
+neighbor 2.0 bin
+atom_style full
+read_data pos_emin.dat
+
+# setup the force field
+include ../i.potential
+
+# perturb the box
+change_box all y final 0.0 ${box_norm} remap units box
+
+thermo 1
+thermo_style custom step etotal ebond eangle edihed pxx pyy pzz pxy pxz pyz
+
+#setup the minimizer
+min_style cg
+minimize 0.0 1.0e-09 100000 100000
+min_style sd
+minimize 0.0 1.0e-09 100000 100000
+min_style hftn
+minimize 0.0 1.0e-12 100000 100000
+
+print "atoms $(atoms) bonds $(bonds) angles $(angles) dihedrals $(dihedrals) lx $(lx) ly $(ly) lz $(lz) pe_atom $(pe/atoms) ebond_atom $(ebond/atoms) eangle_atom $(eangle/atoms) edihed_atom $(edihed/atoms) pxx $(pxx*lz) pyy $(pyy*lz) pzz $(pzz*lz) pxy $(pxy*lz) pxz $(pxz*lz) pyz $(pyz*lz)" file o.log.press # screen no
+
+dump dd all custom 1 dump.lammpstrj id type xu yu zu
+run 1
+
+#write_data pos_emin.dat nocoeff
+write_data pos_emin_final.dat nocoeff

@@ -1,0 +1,28 @@
+# setup the system
+dimension 3
+units metal
+boundary p p p
+neighbor 2.0 bin
+atom_style full
+read_data pos_emin.dat
+
+# setup the force field
+include ../i.potential
+
+thermo 100
+thermo_style custom step etotal ebond eangle edihed pxx pyy pzz pxy pxz pyz
+
+#setup the minimizer
+min_style cg
+minimize 0.0 1.0e-09 100000 100000
+min_style sd
+minimize 0.0 1.0e-09 100000 100000
+min_style hftn
+minimize 0.0 1.0e-12 100000 100000
+
+print "atoms $(atoms) bonds $(bonds) angles $(angles) dihedrals $(dihedrals) lx $(lx) ly $(ly) lz $(lz) pe_atom $(pe/atoms) ebond_atom $(ebond/atoms) eangle_atom $(eangle/atoms) edihed_atom $(edihed/atoms) pxx $(pxx) pyy $(pyy) pzz $(pzz) pxy $(pxy) pxz $(pxz) pyz $(pyz)" file o.log_thermo # screen no
+
+dump dd all custom 1 dump.lammpstrj id type xu yu zu
+run 1
+
+write_data pos_emin_final.dat nocoeff
